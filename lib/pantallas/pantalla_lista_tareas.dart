@@ -1,6 +1,7 @@
-// lib/pantallas/pantalla_lista_tareas.dart
+import 'dart:convert'; // Para traducir a JSON
 
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // Paquete de persistencia
 
 import '../modelos/modelo_tarea.dart';
 import 'pantalla_form_tarea.dart';
@@ -16,21 +17,48 @@ class _PantallaListaTareasState extends State<PantallaListaTareas> {
   // Lista local en memoria que almacenará los objetos Tarea
   final List<Tarea> _listaDeTareas = [];
 
-  // 2) Navegación asíncrona hacia el formulario
+  // initState se ejecuta automáticamente al abrir la app
+  @override
+  void initState() {
+    super.initState();
+    _cargarTareas(); // Recupera las tareas al iniciar
+  }
 
-  // Inicia nuevo método: Navegación asíncrona hacia el formulario
+  // Método para LEER la memoria del teléfono
+  Future<void> _cargarTareas() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String? datosJson = prefs.getString('tareas_guardadas');
+
+    if (datosJson != null) {
+      final List<dynamic> datosDecodificados = jsonDecode(datosJson);
+      setState(() {
+        _listaDeTareas.clear();
+        _listaDeTareas.addAll(
+          datosDecodificados.map((item) => Tarea.fromJson(item)).toList(),
+        );
+      });
+    }
+  }
+
+  Future<void> _guardarTareas() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String datosJson = jsonEncode(
+      _listaDeTareas.map((t) => t.toJson()).toList(),
+    );
+    await prefs.setString('tareas_guardadas', datosJson);
+  }
+
   Future<void> _abrirFormulario() async {
-    // Navigator.push envía al usuario a la nueva pantalla y ESPERA un resultado
     final Tarea? tareaCreada = await Navigator.push<Tarea>(
       context,
       MaterialPageRoute(builder: (context) => const PantallaFormularioTarea()),
     );
 
-    // Si el usuario guardó la tarea (retornó un objeto no nulo)
     if (tareaCreada != null) {
       setState(() {
         _listaDeTareas.add(tareaCreada);
       });
+      _guardarTareas();
     }
   }
 
